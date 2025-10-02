@@ -8,7 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/toaster/goexiv"
+
+	"github.com/bigvova/goexiv"
 )
 
 func TestOpenImage(t *testing.T) {
@@ -41,8 +42,8 @@ func TestOpenImage(t *testing.T) {
 		t.Fatalf("Returned error is not of type Error")
 	}
 
-	if exivErr.Code() != 9 {
-		t.Fatalf("Unexpected error code (expected 9, got %d)", exivErr.Code())
+	if exivErr.Code() != 10 {
+		t.Fatalf("Unexpected error code (expected 10, got %d)", exivErr.Code())
 	}
 }
 
@@ -68,8 +69,8 @@ func Test_OpenBytesFailures(t *testing.T) {
 		{
 			"no image",
 			[]byte("no image"),
-			"The memory contains data of an unknown image type",
-			12,
+			"Failed to read input data",
+			21,
 		},
 		{
 			"empty byte slice",

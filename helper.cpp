@@ -1,5 +1,6 @@
 #include "helper.h"
 
+#include <exiv2/error.hpp>
 #include <exiv2/image.hpp>
 
 #include <stdio.h>
@@ -7,7 +8,7 @@
 #define DEFINE_STRUCT(name,wrapped_type,member_name) \
 struct _##name { \
 	_##name(wrapped_type member_name) \
-		: member_name(member_name) {} \
+		: member_name(std::move(member_name)) {} \
 	wrapped_type member_name; \
 };
 
@@ -18,7 +19,13 @@ void name##_free(type x) \
 }
 
 DEFINE_STRUCT(Exiv2ImageFactory, Exiv2::ImageFactory*, factory);
-DEFINE_STRUCT(Exiv2Image, Exiv2::Image::AutoPtr, image);
+
+struct _Exiv2Image {
+	_Exiv2Image(Exiv2::Image::UniquePtr image)
+		: image(std::move(image)) {}
+	Exiv2::Image::UniquePtr image;
+	mutable Exiv2::DataBuf cachedIccProfile;
+};
 
 DEFINE_STRUCT(Exiv2XmpData, const Exiv2::XmpData&, data);
 DEFINE_STRUCT(Exiv2XmpDatum, const Exiv2::Xmpdatum&, datum);
@@ -45,8 +52,8 @@ struct _Exiv2IptcDatumIterator {
 	Exiv2IptcDatum* next();
 };
 
-DEFINE_FREE_FUNCTION(exiv2_iptc_datum_iterator, Exiv2IptcDatumIterator*)
-DEFINE_FREE_FUNCTION(exiv2_exif_datum_iterator, Exiv2ExifDatumIterator*)
+DEFINE_FREE_FUNCTION(exiv2_iptc_datum_iterator, Exiv2IptcDatumIterator*);
+DEFINE_FREE_FUNCTION(exiv2_exif_datum_iterator, Exiv2ExifDatumIterator*);
 
 struct _Exiv2Error {
 	_Exiv2Error(const Exiv2::Error &error);
@@ -56,7 +63,7 @@ struct _Exiv2Error {
 };
 
 _Exiv2Error::_Exiv2Error(const Exiv2::Error &error)
-	: code(error.code())
+	: code(static_cast<int>(error.code()))
 	, what(strdup(error.what()))
 {
 }
@@ -119,6 +126,28 @@ int exiv2_image_get_pixel_width(Exiv2Image *img) {
 
 int exiv2_image_get_pixel_height(Exiv2Image *img) {
 	return img->image->pixelHeight();
+}
+
+const unsigned char* exiv2_image_icc_profile(Exiv2Image *img)
+{
+	if (img->image->iccProfileDefined()) {
+		if (img->cachedIccProfile.empty()) {
+			img->cachedIccProfile = img->image->iccProfile();
+		}
+		return img->cachedIccProfile.data();
+	}
+	return NULL;
+}
+
+long exiv2_image_icc_profile_size(Exiv2Image *img)
+{
+	if (img->image->iccProfileDefined()) {
+		if (img->cachedIccProfile.empty()) {
+			img->cachedIccProfile = img->image->iccProfile();
+		}
+		return img->cachedIccProfile.size();
+	}
+	return 0;
 }
 
 // XMP
@@ -224,14 +253,16 @@ Exiv2IptcDatum* exiv2_iptc_datum_iterator_next(Exiv2IptcDatumIterator *iter)
 
 DEFINE_FREE_FUNCTION(exiv2_iptc_data, Exiv2IptcData*);
 
-const char* exiv2_iptc_datum_key(const Exiv2IptcDatum *datum)
+char* exiv2_iptc_datum_key(const Exiv2IptcDatum *datum)
 {
-	return datum->datum.key().c_str();
+	const std::string strval = datum->datum.key();
+	return strdup(strval.c_str());
 }
 
-const char* exiv2_iptc_datum_to_string(const Exiv2IptcDatum *datum)
+char* exiv2_iptc_datum_to_string(const Exiv2IptcDatum *datum)
 {
-	return datum->datum.toString(0).c_str();
+	const std::string strval = datum->datum.toString(0);
+	return strdup(strval.c_str());
 }
 
 DEFINE_FREE_FUNCTION(exiv2_iptc_datum, Exiv2IptcDatum*);
@@ -293,14 +324,16 @@ Exiv2ExifDatum* exiv2_exif_datum_iterator_next(Exiv2ExifDatumIterator *iter)
 
 DEFINE_FREE_FUNCTION(exiv2_exif_data, Exiv2ExifData*);
 
-const char* exiv2_exif_datum_key(const Exiv2ExifDatum *datum)
+char* exiv2_exif_datum_key(const Exiv2ExifDatum *datum)
 {
-	return datum->datum.key().c_str();
+	const std::string strval = datum->datum.key();
+	return strdup(strval.c_str());
 }
 
-const char* exiv2_exif_datum_to_string(const Exiv2ExifDatum *datum)
+char* exiv2_exif_datum_to_string(const Exiv2ExifDatum *datum)
 {
-	return datum->datum.toString().c_str();
+	const std::string strval = datum->datum.toString();
+	return strdup(strval.c_str());
 }
 
 DEFINE_FREE_FUNCTION(exiv2_exif_datum, Exiv2ExifDatum*);

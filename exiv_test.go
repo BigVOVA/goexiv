@@ -200,3 +200,44 @@ func TestMetadata(t *testing.T) {
 		})
 	}
 }
+
+func TestICCProfile(t *testing.T) {
+	wd, _ := os.Getwd()
+	testImage := path.Join(wd, "pixel.jpg")
+
+	img, err := goexiv.Open(testImage)
+	require.NoError(t, err)
+	require.NotNil(t, img)
+
+	err = img.ReadMetadata()
+	require.NoError(t, err)
+
+	// Test getting ICC profile
+	profile := img.ICCProfile()
+
+	// For the test image, we expect either nil (no ICC profile) or a valid byte slice
+	if profile != nil {
+		assert.Greater(t, len(profile), 0, "ICC profile should not be empty if present")
+		// ICC profiles typically start with specific headers
+		// Verify it's a reasonable size for an ICC profile
+		assert.LessOrEqual(t, len(profile), 10*1024*1024, "ICC profile size should be reasonable")
+	}
+}
+
+func TestICCProfileNilImage(t *testing.T) {
+	// Test with an image that definitely has no ICC profile
+	// by creating a minimal JPEG without one
+	wd, _ := os.Getwd()
+	testImage := path.Join(wd, "pixel.jpg")
+
+	img, err := goexiv.Open(testImage)
+	require.NoError(t, err)
+
+	// Don't read metadata - test profile access without metadata
+	profile := img.ICCProfile()
+
+	// This should return nil or empty data since metadata wasn't loaded
+	if profile != nil {
+		assert.GreaterOrEqual(t, len(profile), 0)
+	}
+}

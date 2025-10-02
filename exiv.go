@@ -109,3 +109,12 @@ func (i *Image) PixelWidth() int64 {
 func (i *Image) PixelHeight() int64 {
 	return int64(C.exiv2_image_get_pixel_height(i.img))
 }
+
+func (i *Image) ICCProfile() []byte {
+	size := C.exiv2_image_icc_profile_size(i.img)
+	if size == 0 {
+		return nil
+	}
+	data := C.exiv2_image_icc_profile(i.img)
+	return C.GoBytes(unsafe.Pointer(data), C.int(size))
+}

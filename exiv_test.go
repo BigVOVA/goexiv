@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bigvova/goexiv"
+	"github.com/gitschneider/goexiv"
 )
 
 func TestOpenImage(t *testing.T) {

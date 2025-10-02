@@ -1,4 +1,4 @@
-module github.com/bigvova/goexiv
+module github.com/gitschneider/goexiv
 
 go 1.22
 
